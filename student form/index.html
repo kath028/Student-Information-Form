@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Management System</title>
+
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- ORANGE THEME CSS -->
+<style>
+  body {
+    background-color: #fff3e0;
+  }
+
+  h3 {
+    color: #e65100;
+    font-weight: bold;
+  }
+
+  .card {
+    border: 2px solid #ff9800;
+    background-color: #fff8f0;
+  }
+
+  .btn-primary {
+    background-color: #ff9800;
+    border-color: #ff9800;
+  }
+
+  .btn-primary:hover {
+    background-color: #fb8c00;
+  }
+
+  .btn-warning {
+    background-color: #ffb74d;
+    border-color: #ffb74d;
+    color: #000;
+  }
+
+  .btn-danger {
+    background-color: #e53935;
+    border-color: #e53935;
+  }
+
+  .table thead {
+    background-color: #ff9800;
+    color: white;
+  }
+
+  .table-warning {
+    background-color: #ffe0b2 !important;
+  }
+
+  input:focus, select:focus {
+    border-color: #ff9800;
+    box-shadow: 0 0 5px rgba(255, 152, 0, 0.5);
+  }
+</style>
+</head>
+
+<body>
+
+<div class="container mt-4">
+
+  <h3 class="mb-3">Student Information Form</h3>
+
+  <!-- SEARCH BAR -->
+  <div class="mb-3">
+    <input type="text" id="searchBar" class="form-control" placeholder="Search by name or course...">
+  </div>
+
+  <!-- FORM -->
+  <div class="card p-3 mb-4">
+    <input type="hidden" id="studentId">
+
+    <div class="row g-2">
+      <div class="col-md-4">
+        <input type="text" id="lastName" class="form-control" placeholder="Last Name">
+      </div>
+
+      <div class="col-md-4">
+        <input type="text" id="firstName" class="form-control" placeholder="First Name">
+      </div>
+
+      <div class="col-md-4">
+        <input type="text" id="middleName" class="form-control" placeholder="Middle Name (optional)">
+      </div>
+
+      <div class="col-md-4">
+        <input type="date" id="birthdate" class="form-control">
+      </div>
+
+      <div class="col-md-4">
+        <select id="course" class="form-select">
+          <option value="">Select Course</option>
+          <option>BSIT</option>
+          <option>BSCS</option>
+          <option>BSED</option>
+          <option>BSBA</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <input type="number" id="yearLevel" class="form-control" placeholder="Year Level">
+      </div>
+    </div>
+
+    <button class="btn btn-primary mt-3" id="btnSave" onclick="saveStudent()">
+      Add Student
+    </button>
+  </div>
+
+  <!-- TABLE -->
+  <table class="table table-bordered table-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name (L, F, M)</th>
+        <th>Age</th>
+        <th>Course</th>
+        <th>Year</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="studentTable"></tbody>
+  </table>
+
+</div>
+
+<script>
+  let students = [];
+  let editIndex = null;
+
+  function calculateAge(birthdate) {
+    const today = new Date();
+    const birth = new Date(birthdate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  function saveStudent() {
+    const lastName = lastNameInput.value.trim();
+    const firstName = firstNameInput.value.trim();
+    const middleName = middleNameInput.value.trim();
+    const birthdate = birthdateInput.value;
+    const course = courseInput.value;
+    const yearLevel = yearLevelInput.value;
+
+    if (!lastName || !firstName || !birthdate || !course || !yearLevel) {
+      alert("Please fill out all required fields.");
+      return;
+    }
+
+    const fullName = `${lastName}, ${firstName}, ${middleName}`;
+
+    // Prevent duplicate names
+    if (editIndex === null && students.some(s => s.fullName === fullName)) {
+      alert("Duplicate student name is not allowed.");
+      return;
+    }
+
+    const student = {
+      fullName,
+      birthdate,
+      age: calculateAge(birthdate),
+      course,
+      yearLevel
+    };
+
+    if (editIndex === null) {
+      students.push(student);
+    } else {
+      students[editIndex] = student;
+      editIndex = null;
+      btnSave.innerText = "Add Student";
+    }
+
+    clearForm();
+    displayStudents();
+  }
+
+  function displayStudents() {
+    studentTable.innerHTML = "";
+
+    // Sort alphabetically
+    const sortedStudents = [...students].sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+    const query = searchBar.value.trim().toLowerCase();
+
+    sortedStudents.forEach((s, i) => {
+      // Search filter
+      if (query && !(`${s.fullName} ${s.course}`.toLowerCase().includes(query))) {
+        return;
+      }
+
+      const row = document.createElement("tr");
+
+      // Highlight minors
+      if (s.age < 18) {
+        row.classList.add("table-warning");
+      }
+
+      row.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${s.fullName}</td>
+        <td>${s.age}</td>
+        <td>${s.course}</td>
+        <td>${s.yearLevel}</td>
+        <td>
+          <button class="btn btn-sm btn-warning" onclick="editStudent('${s.fullName}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteStudent('${s.fullName}')">Delete</button>
+        </td>
+      `;
+      studentTable.appendChild(row);
+    });
+  }
+
+  function editStudent(fullName) {
+    const index = students.findIndex(s => s.fullName === fullName);
+    const s = students[index];
+    const nameParts = s.fullName.split(",");
+
+    lastNameInput.value = nameParts[0].trim();
+    firstNameInput.value = nameParts[1].trim();
+    middleNameInput.value = nameParts[2]?.trim() || "";
+    birthdateInput.value = s.birthdate;
+    courseInput.value = s.course;
+    yearLevelInput.value = s.yearLevel;
+
+    editIndex = index;
+    btnSave.innerText = "Update Student";
+  }
+
+  function deleteStudent(fullName) {
+    const index = students.findIndex(s => s.fullName === fullName);
+    if (confirm("Are you sure you want to delete this student?")) {
+      students.splice(index, 1);
+      displayStudents();
+    }
+  }
+
+  function clearForm() {
+    lastNameInput.value = "";
+    firstNameInput.value = "";
+    middleNameInput.value = "";
+    birthdateInput.value = "";
+    courseInput.value = "";
+    yearLevelInput.value = "";
+  }
+
+  // Element shortcuts
+  const lastNameInput = document.getElementById("lastName");
+  const firstNameInput = document.getElementById("firstName");
+  const middleNameInput = document.getElementById("middleName");
+  const birthdateInput = document.getElementById("birthdate");
+  const courseInput = document.getElementById("course");
+  const yearLevelInput = document.getElementById("yearLevel");
+  const studentTable = document.getElementById("studentTable");
+  const btnSave = document.getElementById("btnSave");
+  const searchBar = document.getElementById("searchBar");
+
+  // Search functionality
+  searchBar.addEventListener("input", displayStudents);
+
+</script>
+
+</body>
+</html>
